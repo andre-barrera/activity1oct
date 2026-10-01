@@ -65,3 +65,6 @@ button,input,textarea{font:inherit}button,a,input,textarea{-webkit-tap-highlight
 /* Keep round photos fully visible and give portrait images more vertical room. */
 @media(min-width:851px){.large-photo,.host-stage .large-photo{height:clamp(460px,66svh,700px)!important}}
 .photo-window.large-photo img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important}
+.reset-game-button{border-color:#ff315c70!important;color:#ff9ab0!important}
+.reset-game-button:hover:not(:disabled){border-color:var(--hot)!important;background:#ff315c12!important;color:#ffc0ce!important}
+@media(max-width:640px){.control-buttons .reset-game-button{flex-basis:100%}.host-shell:has(.reset-game-button){padding-bottom:225px}}

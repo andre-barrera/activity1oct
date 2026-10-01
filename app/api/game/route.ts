@@ -401,10 +401,10 @@ export async function POST(request: Request) {
         await normalizeParticipantOrder(game.id);
         const result = await client.from("games").update({ status: "countdown", current_round: 0, voting_ends_at: roundEnd() }).eq("id", game.id).eq("status", "lobby");
         if (result.error) throw result.error;
-      } else if (command === "reset" && game.status === "finished") {
+      } else if (command === "reset" && game.status !== "lobby") {
         const votes = await client.from("votes").delete().eq("game_id", game.id);
         if (votes.error) throw votes.error;
-        const result = await client.from("games").update({ status: "lobby", current_round: 0, voting_ends_at: null }).eq("id", game.id).eq("status", "finished");
+        const result = await client.from("games").update({ status: "lobby", current_round: 0, voting_ends_at: null }).eq("id", game.id).eq("status", game.status);
         if (result.error) throw result.error;
       } else {
         const transitions: Record<string, { from: Phase[]; to: Phase }> = {
