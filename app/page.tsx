@@ -214,7 +214,11 @@ function HostView({ state, apply, refresh, offset, sound, notice }: { state: Gam
 
 function ParticipantEditor({ person, code, onClose, onSaved }: { person: Person | "new" | null; code: string; onClose: () => void; onSaved: (state: GameState) => void }) {
   const [busy, setBusy] = useState(false), [fileName, setFileName] = useState("");
-  useEffect(() => setFileName(""), [person]);
+  const [descriptionLength, setDescriptionLength] = useState(0);
+  useEffect(() => {
+    setFileName("");
+    setDescriptionLength(person && person !== "new" ? person.description?.length || 0 : 0);
+  }, [person]);
   const existing = person && person !== "new" ? person : null;
   const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); setBusy(true);
@@ -224,7 +228,7 @@ function ParticipantEditor({ person, code, onClose, onSaved }: { person: Person 
     catch (error) { toast.error(errorText(error)); }
     finally { setBusy(false); }
   };
-  return <Dialog open={!!person} onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent className="game-dialog editor-dialog"><DialogHeader><DialogTitle>{existing ? "Edita este recuerdo" : "Agrega un recuerdo"}</DialogTitle><DialogDescription>El nombre se mantendrá oculto hasta la revelación.</DialogDescription></DialogHeader><form key={existing?.id || "new"} onSubmit={save}><label className="upload-zone"><ImagePlus /><b>{fileName || (existing?.photoUrl ? "Cambiar foto de infancia" : "Seleccionar foto de infancia")}</b><span>JPG, PNG, WEBP o GIF · máximo 8 MB</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e => setFileName(e.target.files?.[0]?.name || "")} /></label><label htmlFor="person-name">Nombre de la persona</label><input id="person-name" name="name" required maxLength={60} defaultValue={existing?.name || ""} placeholder="Ej. Andrea López" /><label htmlFor="person-description">Una pista de su infancia</label><textarea id="person-description" name="description" required maxLength={1000} defaultValue={existing?.description || ""} placeholder="¿Qué le gustaba hacer? ¿Cómo era? ¿Qué soñaba ser?" rows={4} /><Button className="action lime" type="submit" disabled={busy}><BusyLabel busy={busy}>{existing ? "Guardar cambios" : "Agregar al juego"}</BusyLabel></Button></form></DialogContent></Dialog>;
+  return <Dialog open={!!person} onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent className="game-dialog editor-dialog"><DialogHeader><DialogTitle>{existing ? "Edita este recuerdo" : "Agrega un recuerdo"}</DialogTitle><DialogDescription>El nombre se mantendrá oculto hasta la revelación.</DialogDescription></DialogHeader><form key={existing?.id || "new"} onSubmit={save}><label className="upload-zone"><ImagePlus /><b>{fileName || (existing?.photoUrl ? "Cambiar foto de infancia" : "Seleccionar foto de infancia")}</b><span>JPG, PNG, WEBP o GIF · máximo 8 MB</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e => setFileName(e.target.files?.[0]?.name || "")} /></label><label htmlFor="person-name">Nombre de la persona</label><input id="person-name" name="name" required maxLength={60} defaultValue={existing?.name || ""} placeholder="Ej. Andrea López" /><label htmlFor="person-description">Una pista de su infancia</label><textarea id="person-description" name="description" required maxLength={3000} defaultValue={existing?.description || ""} onChange={e => setDescriptionLength(e.target.value.length)} placeholder="¿Qué le gustaba hacer? ¿Cómo era? ¿Qué soñaba ser?" rows={4} /><span className="character-count">{descriptionLength.toLocaleString("es-GT")} / 3,000 caracteres</span><Button className="action lime" type="submit" disabled={busy}><BusyLabel busy={busy}>{existing ? "Guardar cambios" : "Agregar al juego"}</BusyLabel></Button></form></DialogContent></Dialog>;
 }
 
 function PlayerView({ state, offset, sound, playerKey, setPlayerKey, apply, refresh, notice }: { state: GameState; offset: number; sound: Sound; playerKey: string; setPlayerKey: (key: string) => void; apply: (state: GameState) => void; refresh: Refresh; notice: ReactNode }) {

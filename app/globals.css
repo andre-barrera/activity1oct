@@ -47,6 +47,10 @@ button,input,textarea{font:inherit}button,a,input,textarea{-webkit-tap-highlight
 
 .entry-panel[data-slot="tabs"]{gap:0}.entry-tabs[data-slot="tabs-list"]{width:100%;height:auto;min-height:64px;border-radius:16px 16px 0 0;background:transparent}.entry-panel [data-slot="tabs-content"]{margin:0}.entry-tabs button[data-state="active"]{background:var(--purple)!important;color:#100c19!important}.entry-tabs [data-slot="tabs-trigger"]{height:auto;white-space:normal}
 
+.saved-games{padding:24px 32px 0}.saved-games>.eyebrow{margin-bottom:12px}.saved-games>div{display:grid;gap:9px}.saved-game{width:100%;border:1px solid #564267;background:#100d17;color:white;border-radius:9px;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;transition:border-color .18s,transform .18s,background .18s}.saved-game:hover{border-color:var(--lime);background:#1b1424;transform:translateY(-1px)}.saved-game span{display:grid;gap:3px;min-width:0}.saved-game b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.saved-game small{color:var(--dim);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em}.saved-game strong{color:var(--lime);letter-spacing:.12em;font-size:.9rem}.saved-games>p{color:var(--dim);font-size:.75rem;margin-top:10px}.saved-games-loading{display:flex;align-items:center;justify-content:center;gap:9px;padding:24px 32px 0;color:var(--dim);font-size:.8125rem}.saved-games-loading svg{width:18px}.organizer-home>form{padding-top:22px}
+.character-count{display:block;margin-top:7px;text-align:right;color:var(--dim);font-size:.75rem;font-variant-numeric:tabular-nums}
+@media(max-width:640px){.saved-games{padding:20px 24px 0}.saved-game{padding:12px}.saved-game b{max-width:185px}}
+
 /* The phone advances with the show; feedback stays above the fold. */
 .phone-round.state-results .phone-memory,.phone-round.state-reveal .phone-memory,.phone-round.has-vote.state-voting .phone-memory{display:none}
 .phone-round.state-reveal .reveal-card{padding:42px 22px 34px;margin-top:24px}
