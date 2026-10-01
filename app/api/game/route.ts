@@ -126,9 +126,12 @@ async function stateFor(roomCode: string, ownerId = "", playerKey = "", view: "p
   const showAnswer = answerVisible(game.status);
   const scoredThrough = showAnswer ? game.current_round : game.current_round - 1;
   const client = supabaseAdmin();
+  const peopleQuery = includeMedia
+    ? client.from("participants").select("id,name,description,photo_path,sort_order").eq("game_id", game.id).order("sort_order", { ascending: true }).order("id", { ascending: true })
+    : client.from("participants").select("id,name,sort_order").eq("game_id", game.id).order("sort_order", { ascending: true }).order("id", { ascending: true });
 
   const [peopleResult, playersResult, currentVotesResult, scoreVotesResult] = await Promise.all([
-    client.from("participants").select(includeMedia ? "id,name,description,photo_path,sort_order" : "id,name,sort_order").eq("game_id", game.id).order("sort_order", { ascending: true }).order("id", { ascending: true }),
+    peopleQuery,
     client.from("players").select("id,name,joined_at").eq("game_id", game.id).order("joined_at", { ascending: true }).order("id", { ascending: true }),
     client.from("votes").select("player_id,guess_participant_id").eq("game_id", game.id).eq("round_index", game.current_round),
     scoredThrough >= 0
@@ -141,7 +144,9 @@ async function stateFor(roomCode: string, ownerId = "", playerKey = "", view: "p
   if (currentVotesResult.error) throw currentVotesResult.error;
   if (scoreVotesResult.error) throw scoreVotesResult.error;
 
-  const people = (peopleResult.data || []) as PersonRow[];
+  // Both explicit selects above are compatible with PersonRow; media fields are
+  // optional because the player view intentionally omits them.
+  const people = (peopleResult.data || []) as unknown as PersonRow[];
   const joined = (playersResult.data || []) as PlayerRow[];
   const currentVotes = (currentVotesResult.data || []) as VoteRow[];
   const scoreVotes = (scoreVotesResult.data || []) as VoteRow[];
