@@ -1,4 +1,4 @@
-export const ROUND_SECONDS = 35;
+export const ROUND_SECONDS = 60;
 export const INTRO_SECONDS = 4;
 export const POINTS = 1000;
 
