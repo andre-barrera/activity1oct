@@ -234,7 +234,7 @@ export async function POST(request: Request) {
 
       const name = String(form.get("name") || "").trim();
       const description = String(form.get("description") || "").trim();
-      if (!name || !description || name.length > 60 || description.length > 1000) return json({ error: "Agrega un nombre (máximo 60 caracteres) y una descripción (máximo 500)." }, 400);
+      if (!name || !description || name.length > 60 || description.length > 1000) return json({ error: "Agrega un nombre (máximo 60 caracteres) y una descripción (máximo 1000)." }, 400);
 
       const personId = String(form.get("participantId") || "");
       let existing: PersonRow | null = null;
@@ -285,6 +285,26 @@ export async function POST(request: Request) {
 
     const body = await request.json() as Record<string, unknown>;
     const action = String(body.action || "");
+
+    if (action === "list_games") {
+      const organizer = await organizerFromRequest(request);
+      if (!organizer) return json({ error: "Inicia sesión con la cuenta autorizada del organizador." }, 401);
+      const result = await client
+        .from("games")
+        .select("code,title,status,created_at")
+        .eq("owner_id", organizer.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (result.error) throw result.error;
+      return json({
+        games: (result.data || []).map((game: { code: string; title: string; status: Phase; created_at: string }) => ({
+          code: game.code,
+          title: game.title,
+          status: game.status,
+          createdAt: game.created_at,
+        })),
+      });
+    }
 
     if (action === "create") {
       const organizer = await organizerFromRequest(request);

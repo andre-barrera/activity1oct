@@ -14,11 +14,13 @@ import { SoundButton, useGameSound, type Sound } from "@/components/game/effects
 import { Avatar, Brand, Lobby, Photo, Reveal, Results, RoundIntro, RoundTimer, Scoreboard, Stage, VoteMeter, phaseNames } from "@/components/game/stage";
 import { OrganizerLogin } from "@/components/game/organizer-login";
 import { organizerAuthHeaders, supabaseBrowser } from "@/lib/supabase-browser";
-import { type GameState, type Person } from "@/lib/game-types";
+import { type GameState, type Person, type Phase } from "@/lib/game-types";
 
 type Mode = "home" | "host" | "join" | "screen";
 type Creation = { code: string };
 type JoinResult = { playerId: string; state: GameState };
+type SavedGame = { code: string; title: string; status: Phase; createdAt: string };
+type SavedGamesResult = { games: SavedGame[] };
 type Refresh = () => Promise<void>;
 
 async function api<T>(body: Record<string, unknown> | FormData): Promise<T> {
@@ -116,7 +118,7 @@ export default function Home() {
   }, [createGame]);
 
   if (!booted) return <Shell><div className="connecting"><Brand /><LoaderCircle className="spin" /></div></Shell>;
-  if (mode === "home") return <Landing onCreate={(title, demo) => { void createGame(title, demo).catch(() => {}); }} onJoin={(room, screen) => enter(screen ? "screen" : "join", room)} loading={loading} />;
+  if (mode === "home") return <Landing onCreate={(title, demo) => { void createGame(title, demo).catch(() => {}); }} onJoin={(room, screen) => enter(screen ? "screen" : "join", room)} onResume={room => enter("host", room)} loading={loading} />;
   if (!state) return <Shell><div className="connection-card"><Brand /><div className="connection-icon">{error ? <WifiOff /> : <LoaderCircle className="spin" />}</div><span className="eyebrow">SALA {code}</span><h1>{error ? "VAMOS A RECONECTAR." : "ENTRANDO AL JUEGO…"}</h1>{error && <><p role="alert">{error}</p><Button className="action lime" onClick={refresh}>Reintentar</Button><Link className="text-button" href="/">Usar otro código</Link></>}{mode === "host" && <div className="entry-panel auth-entry"><OrganizerLogin onAuthenticated={() => { setError(""); void refresh(); }} /></div>}</div></Shell>;
   const notice = error ? <div className="network-notice" role="status"><WifiOff /> Reconectando… Tu respuesta confirmada sigue guardada.<button onClick={refresh}>Reintentar</button></div> : null;
   const shared = { state, offset, sound };
@@ -125,12 +127,26 @@ export default function Home() {
   return <PlayerView {...shared} playerKey={playerKey} setPlayerKey={(key) => { setPlayerKey(key); try { localStorage.setItem(`player:${code}`, key); } catch {} }} apply={apply} refresh={refresh} notice={notice} />;
 }
 
-function Landing({ onCreate, onJoin, loading }: { onCreate: (title: string, demo?: boolean) => void; onJoin: (room: string, screen?: boolean) => void; loading: boolean }) {
+function Landing({ onCreate, onJoin, onResume, loading }: { onCreate: (title: string, demo?: boolean) => void; onJoin: (room: string, screen?: boolean) => void; onResume: (room: string) => void; loading: boolean }) {
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("Día del Niño 2026");
   const [organize, setOrganize] = useState(false);
   const [organizerSignedIn, setOrganizerSignedIn] = useState(false);
   const [organizerAuthChecked, setOrganizerAuthChecked] = useState(false);
+  const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
+  const [savedGamesLoading, setSavedGamesLoading] = useState(false);
+
+  const loadSavedGames = useCallback(async () => {
+    setSavedGamesLoading(true);
+    try {
+      const result = await api<SavedGamesResult>({ action: "list_games" });
+      setSavedGames(result.games);
+    } catch (error) {
+      toast.error(errorText(error));
+    } finally {
+      setSavedGamesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -153,10 +169,15 @@ function Landing({ onCreate, onJoin, loading }: { onCreate: (title: string, demo
     return () => { active = false; unsubscribe?.(); };
   }, []);
 
+  useEffect(() => {
+    if (organizerSignedIn) void loadSavedGames();
+    else setSavedGames([]);
+  }, [organizerSignedIn, loadSavedGames]);
+
   const organizerContent = !organizerAuthChecked
     ? <div className="connecting"><LoaderCircle className="spin" /><p className="form-hint">Verificando tu sesión…</p></div>
     : organizerSignedIn
-      ? <form onSubmit={event => { event.preventDefault(); onCreate(title); }}><span className="eyebrow">TÚ PONES LAS FOTOS</span><h2>QUE EMPIECE<br />EL SHOW.</h2><label htmlFor="event-title">Nombre de la actividad</label><input id="event-title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required /><Button className="action lime" disabled={loading} type="submit"><BusyLabel busy={loading}>Crear mi actividad</BusyLabel><Plus /></Button><button className="text-button" type="button" disabled={loading} onClick={() => onCreate("Demo · Día del Niño", true)}>Probar con 4 participantes de ejemplo</button><p className="form-hint">Sesión autorizada. Después podrás subir las fotos y controlar el juego.</p></form>
+      ? <div className="organizer-home">{savedGamesLoading ? <div className="saved-games-loading"><LoaderCircle className="spin" /> Buscando tus salas…</div> : savedGames.length > 0 ? <section className="saved-games"><span className="eyebrow acid">TUS SALAS GUARDADAS</span><div>{savedGames.map(game => <button type="button" className="saved-game" key={game.code} onClick={() => onResume(game.code)}><span><b>{game.title}</b><small>{phaseNames[game.status]}</small></span><strong>{game.code}</strong></button>)}</div><p>Las fotos y tarjetas permanecen guardadas en Supabase.</p></section> : null}<form onSubmit={event => { event.preventDefault(); onCreate(title); }}><span className="eyebrow">{savedGames.length ? "CREAR OTRA ACTIVIDAD" : "TÚ PONES LAS FOTOS"}</span><h2>QUE EMPIECE<br />EL SHOW.</h2><label htmlFor="event-title">Nombre de la actividad</label><input id="event-title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required /><Button className="action lime" disabled={loading} type="submit"><BusyLabel busy={loading}>Crear mi actividad</BusyLabel><Plus /></Button><button className="text-button" type="button" disabled={loading} onClick={() => onCreate("Demo · Día del Niño", true)}>Probar con 4 participantes de ejemplo</button><p className="form-hint">Sesión autorizada. Tus salas estarán disponibles cada vez que vuelvas.</p></form></div>
       : <OrganizerLogin onAuthenticated={() => setOrganizerSignedIn(true)} />;
 
   return <Shell className="welcome"><header className="site-header"><Brand /><span className="header-edition"><Radio /> EL EQUIPO. COMO NUNCA LO HAS VISTO.</span></header><div className="welcome-layout"><section className="welcome-title"><span className="eyebrow acid"><Sparkles /> UN VIAJE A LA INFANCIA</span><h1>CARAS<br />CONOCIDAS.<br /><em>PEQUEÑOS<br />MISTERIOS.</em></h1><div className="welcome-rule"><b>35</b><span>segundos.<br />Una foto. Tu intuición.</span><Zap /></div></section><Tabs className="entry-panel" value={organize ? "organize" : "play"} onValueChange={value => setOrganize(value === "organize")}><TabsList className="entry-tabs"><TabsTrigger value="play"><Gamepad2 /> Voy a jugar</TabsTrigger><TabsTrigger value="organize"><MonitorPlay /> Voy a organizar</TabsTrigger></TabsList>{organize ? <TabsContent value="organize">{organizerContent}</TabsContent> : <TabsContent value="play"><form onSubmit={event => { event.preventDefault(); onJoin(code); }}><span className="eyebrow">¿LISTO PARA ADIVINAR?</span><h2>EL JUEGO<br />TE ESPERA.</h2><label htmlFor="room-code">Código de la sala</label><input className="room-input" id="room-code" autoComplete="off" placeholder="ABC123" value={code} maxLength={6} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /><Button className="action hot" disabled={code.length !== 6} type="submit">Entrar al juego <Gamepad2 /></Button><button type="button" className="text-button" disabled={code.length !== 6} onClick={() => onJoin(code, true)}><MonitorPlay /> Abrir pantalla de presentación</button><p className="form-hint">Sin registros. Solo tu nombre y ganas de jugar.</p></form></TabsContent>}<div className="entry-bottom"><span><Users /> JUNTOS, EN VIVO</span><span><Trophy /> 1,000 PTS POR ACIERTO</span></div></Tabs></div><footer className="welcome-footer"><span>FOTOS DE ANTES. RISAS DE AHORA.</span><span>DÍA DEL NIÑO / 2026</span></footer></Shell>;
