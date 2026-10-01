@@ -13,7 +13,7 @@ export type GameState = {
   voteCount: number;
   results: { participantId: string; count: number }[];
   scores: Score[];
-  current: { name: string | null; description: string; photoUrl: string | null } | null;
+  current: { name: string | null; description?: string; photoUrl?: string | null } | null;
   correctId: string | null;
   isHost: boolean;
   me: { id: string; name: string; score: number; rank: number; voteParticipantId: string | null; correct: boolean | null } | null;

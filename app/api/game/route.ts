@@ -18,8 +18,8 @@ type GameRow = {
 type PersonRow = {
   id: string;
   name: string;
-  description: string;
-  photo_path: string | null;
+  description?: string;
+  photo_path?: string | null;
   sort_order: number;
 };
 
@@ -116,18 +116,19 @@ async function publicId(gameId: string, playerId: string) {
   return Array.from(new Uint8Array(digest).slice(0, 12), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-async function stateFor(roomCode: string, ownerId = "", playerKey = ""): Promise<GameState | null> {
+async function stateFor(roomCode: string, ownerId = "", playerKey = "", view: "player" | "screen" = "player"): Promise<GameState | null> {
   const serverTime = Date.now();
   const game = await advanceClock(roomCode);
   if (!game) return null;
 
   const isHost = Boolean(ownerId && game.owner_id === ownerId);
+  const includeMedia = isHost || view === "screen";
   const showAnswer = answerVisible(game.status);
   const scoredThrough = showAnswer ? game.current_round : game.current_round - 1;
   const client = supabaseAdmin();
 
   const [peopleResult, playersResult, currentVotesResult, scoreVotesResult] = await Promise.all([
-    client.from("participants").select("id,name,description,photo_path,sort_order").eq("game_id", game.id).order("sort_order", { ascending: true }).order("id", { ascending: true }),
+    client.from("participants").select(includeMedia ? "id,name,description,photo_path,sort_order" : "id,name,sort_order").eq("game_id", game.id).order("sort_order", { ascending: true }).order("id", { ascending: true }),
     client.from("players").select("id,name,joined_at").eq("game_id", game.id).order("joined_at", { ascending: true }).order("id", { ascending: true }),
     client.from("votes").select("player_id,guess_participant_id").eq("game_id", game.id).eq("round_index", game.current_round),
     scoredThrough >= 0
@@ -183,7 +184,9 @@ async function stateFor(roomCode: string, ownerId = "", playerKey = ""): Promise
     })))
     : people.map((participant) => ({ id: participant.id, name: participant.name })).sort((a, b) => a.name.localeCompare(b.name, "es"));
   const current = person && game.status !== "lobby"
-    ? { name: showAnswer ? person.name : null, description: person.description, photoUrl: await photoUrlFor(person.photo_path) }
+    ? includeMedia
+      ? { name: showAnswer ? person.name : null, description: person.description || "", photoUrl: await photoUrlFor(person.photo_path) }
+      : { name: showAnswer ? person.name : null }
     : null;
   const ownVote = currentVotes.find((vote) => vote.player_id === playerKey);
   const own = scores.find((row) => row.id === playerIds.get(playerKey));
@@ -209,7 +212,8 @@ export async function GET(request: Request) {
     const roomCode = (url.searchParams.get("code") || "").trim().toUpperCase();
     if (!roomCode) return json({ error: "Escribe el código de la sala." }, 400);
     const organizer = await organizerFromRequest(request);
-    const state = await stateFor(roomCode, organizer?.id || "", request.headers.get("x-player-key") || "");
+    const view = url.searchParams.get("view") === "screen" ? "screen" : "player";
+    const state = await stateFor(roomCode, organizer?.id || "", request.headers.get("x-player-key") || "", view);
     return state ? json(state) : json({ error: "No encontramos esa sala. Revisa el código." }, 404);
   } catch (error) {
     console.error("game state", error);
