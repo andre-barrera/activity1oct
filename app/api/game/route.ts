@@ -234,7 +234,7 @@ export async function POST(request: Request) {
 
       const name = String(form.get("name") || "").trim();
       const description = String(form.get("description") || "").trim();
-      if (!name || !description || name.length > 60 || description.length > 500) return json({ error: "Agrega un nombre (máximo 60 caracteres) y una descripción (máximo 500)." }, 400);
+      if (!name || !description || name.length > 60 || description.length > 1000) return json({ error: "Agrega un nombre (máximo 60 caracteres) y una descripción (máximo 500)." }, 400);
 
       const personId = String(form.get("participantId") || "");
       let existing: PersonRow | null = null;
