@@ -404,6 +404,8 @@ export async function POST(request: Request) {
       } else if (command === "reset" && game.status !== "lobby") {
         const votes = await client.from("votes").delete().eq("game_id", game.id);
         if (votes.error) throw votes.error;
+        const players = await client.from("players").delete().eq("game_id", game.id);
+        if (players.error) throw players.error;
         const result = await client.from("games").update({ status: "lobby", current_round: 0, voting_ends_at: null }).eq("id", game.id).eq("status", game.status);
         if (result.error) throw result.error;
       } else {
